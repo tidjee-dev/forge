@@ -1,0 +1,9 @@
+go 1.26.1
+
+use (
+    ./ink
+    ./cast
+    ./core
+    ./anvil
+    ./forgetest
+)

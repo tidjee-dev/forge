@@ -215,10 +215,6 @@ func BorderBlock() BorderStyle {
 // BorderHidden returns a border where every glyph is a single space. The border
 // occupies space in the layout without drawing any visible line. This is useful
 // for aligning content that sits alongside bordered blocks.
-//
-// ·       ·
-// ·  …  ·
-// ·       ·
 func BorderHidden() BorderStyle {
 	return BorderStyle{
 		TopLeft:     " ",

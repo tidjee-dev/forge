@@ -37,7 +37,7 @@ fmt.Println(label.Render("error"))
 - **Themes** — named style maps, concurrent-safe, cloneable and mergeable
 - **Style overrides** — patch a base style without mutating it
 - **ANSI strip** — remove escape sequences from any string
-- **Color utilities** — `Lighten`, `Darken`, `Mix`, `ContrastRatio`, `ContrastedColor`, `HexToRGB`
+- **Color utilities** — `Lighten`, `Darken`, `Mix`, `ContrastRatio`, `ContrastedColor`, `Hex`
 - **Auto color detection** — respects `NO_COLOR`, `COLORTERM`, `TERM=dumb`, and TTY state
 
 ---
@@ -48,7 +48,7 @@ Three ways to specify a color:
 
 ```go
 ink.RGB(255, 87, 51)          // 24-bit true color
-ink.HexToRGB("#ff5733")       // CSS hex (long or short form)
+ink.Hex("#ff5733")       // CSS hex (long or short form)
 ink.ANSI256(202)              // xterm 256-color palette
 ink.ANSI16(1)                 // classic 16-color palette
 ```

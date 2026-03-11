@@ -143,6 +143,68 @@ func assertGlyph(t *testing.T, field, got, want string) {
 	}
 }
 
+func TestBorderDashed_Glyphs(t *testing.T) {
+	bs := BorderDashed()
+	assertGlyph(t, "TopLeft", bs.TopLeft, "┌")
+	assertGlyph(t, "TopRight", bs.TopRight, "┐")
+	assertGlyph(t, "BottomLeft", bs.BottomLeft, "└")
+	assertGlyph(t, "BottomRight", bs.BottomRight, "┘")
+	assertGlyph(t, "Top", bs.Top, "┄")
+	assertGlyph(t, "Bottom", bs.Bottom, "┄")
+	assertGlyph(t, "Left", bs.Left, "┆")
+	assertGlyph(t, "Right", bs.Right, "┆")
+}
+
+func TestBorderBlock_Glyphs(t *testing.T) {
+	bs := BorderBlock()
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{"TopLeft", bs.TopLeft},
+		{"TopRight", bs.TopRight},
+		{"BottomLeft", bs.BottomLeft},
+		{"BottomRight", bs.BottomRight},
+		{"Top", bs.Top},
+		{"Bottom", bs.Bottom},
+		{"Left", bs.Left},
+		{"Right", bs.Right},
+	} {
+		assertGlyph(t, field.name, field.value, "█")
+	}
+}
+
+func TestBorderHidden_Glyphs(t *testing.T) {
+	bs := BorderHidden()
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{"TopLeft", bs.TopLeft},
+		{"TopRight", bs.TopRight},
+		{"BottomLeft", bs.BottomLeft},
+		{"BottomRight", bs.BottomRight},
+		{"Top", bs.Top},
+		{"Bottom", bs.Bottom},
+		{"Left", bs.Left},
+		{"Right", bs.Right},
+	} {
+		assertGlyph(t, field.name, field.value, " ")
+	}
+}
+
+func TestBorderInnerHalfBlock_Glyphs(t *testing.T) {
+	bs := BorderInnerHalfBlock()
+	assertGlyph(t, "TopLeft", bs.TopLeft, "▄")
+	assertGlyph(t, "TopRight", bs.TopRight, "▄")
+	assertGlyph(t, "BottomLeft", bs.BottomLeft, "▀")
+	assertGlyph(t, "BottomRight", bs.BottomRight, "▀")
+	assertGlyph(t, "Top", bs.Top, "▄")
+	assertGlyph(t, "Bottom", bs.Bottom, "▀")
+	assertGlyph(t, "Left", bs.Left, "▌")
+	assertGlyph(t, "Right", bs.Right, "▐")
+}
+
 // ---------------------------------------------------------------------------
 // Style border setters
 // ---------------------------------------------------------------------------
@@ -476,6 +538,10 @@ func TestStyle_Render_Border_StripRoundTrip(t *testing.T) {
 		BorderThick(),
 		BorderDouble(),
 		BorderASCII(),
+		BorderDashed(),
+		BorderBlock(),
+		BorderHidden(),
+		BorderInnerHalfBlock(),
 	}
 
 	for _, text := range texts {
@@ -492,6 +558,74 @@ func TestStyle_Render_Border_StripRoundTrip(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Render — remaining presets produce output with content intact
+// ---------------------------------------------------------------------------
+
+func TestStyle_Render_Border_Dashed(t *testing.T) {
+	enableColorForBorder(t)
+
+	s := New().WithBorder(BorderDashed())
+	out := s.Render("hi")
+
+	for _, glyph := range []string{"┌", "┐", "└", "┘", "┄", "┆"} {
+		if !strings.Contains(out, glyph) {
+			t.Errorf("Render with BorderDashed missing glyph %q\noutput: %q", glyph, out)
+		}
+	}
+	if !strings.Contains(Strip(out), "hi") {
+		t.Errorf("Render with BorderDashed lost content, stripped: %q", Strip(out))
+	}
+}
+
+func TestStyle_Render_Border_Block(t *testing.T) {
+	enableColorForBorder(t)
+
+	s := New().WithBorder(BorderBlock())
+	out := s.Render("hi")
+
+	if !strings.Contains(out, "█") {
+		t.Errorf("Render with BorderBlock missing glyph █\noutput: %q", out)
+	}
+	if !strings.Contains(Strip(out), "hi") {
+		t.Errorf("Render with BorderBlock lost content, stripped: %q", Strip(out))
+	}
+}
+
+func TestStyle_Render_Border_Hidden(t *testing.T) {
+	enableColorForBorder(t)
+
+	s := New().WithBorder(BorderHidden())
+	out := s.Render("hi")
+
+	// Hidden border uses spaces — content must still be present.
+	if !strings.Contains(Strip(out), "hi") {
+		t.Errorf("Render with BorderHidden lost content, stripped: %q", Strip(out))
+	}
+	// No box-drawing characters should appear.
+	for _, glyph := range []string{"─", "│", "┌", "┐", "└", "┘"} {
+		if strings.Contains(out, glyph) {
+			t.Errorf("Render with BorderHidden contains unexpected glyph %q", glyph)
+		}
+	}
+}
+
+func TestStyle_Render_Border_InnerHalfBlock(t *testing.T) {
+	enableColorForBorder(t)
+
+	s := New().WithBorder(BorderInnerHalfBlock())
+	out := s.Render("hi")
+
+	for _, glyph := range []string{"▄", "▀", "▌", "▐"} {
+		if !strings.Contains(out, glyph) {
+			t.Errorf("Render with BorderInnerHalfBlock missing glyph %q\noutput: %q", glyph, out)
+		}
+	}
+	if !strings.Contains(Strip(out), "hi") {
+		t.Errorf("Render with BorderInnerHalfBlock lost content, stripped: %q", Strip(out))
 	}
 }
 

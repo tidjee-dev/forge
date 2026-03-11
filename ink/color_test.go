@@ -1,9 +1,301 @@
 package ink
 
 import (
+	"fmt"
 	"math"
+	"strings"
 	"testing"
 )
+
+// ---------------------------------------------------------------------------
+// RGB / ANSI16 / ANSI256 constructors
+// ---------------------------------------------------------------------------
+
+func TestRGB_StoresComponents(t *testing.T) {
+	c := RGB(10, 20, 30)
+	if c.r != 10 || c.g != 20 || c.b != 30 {
+		t.Errorf("RGB(10,20,30): r=%d g=%d b=%d, want 10 20 30", c.r, c.g, c.b)
+	}
+	if c.mode != colorRGB {
+		t.Errorf("RGB mode = %v, want colorRGB", c.mode)
+	}
+	if c.IsZeroColor() {
+		t.Error("RGB(...).IsZeroColor() = true, want false")
+	}
+}
+
+func TestRGB_Extremes(t *testing.T) {
+	black := RGB(0, 0, 0)
+	white := RGB(255, 255, 255)
+	if black.IsZeroColor() {
+		t.Error("RGB(0,0,0).IsZeroColor() = true, want false (black is a valid color)")
+	}
+	if white.IsZeroColor() {
+		t.Error("RGB(255,255,255).IsZeroColor() = true, want false")
+	}
+}
+
+func TestANSI16_StoresCode(t *testing.T) {
+	c := ANSI16(3)
+	if c.code != 3 {
+		t.Errorf("ANSI16(3).code = %d, want 3", c.code)
+	}
+	if c.mode != colorANSI16 {
+		t.Errorf("ANSI16 mode = %v, want colorANSI16", c.mode)
+	}
+	if c.IsZeroColor() {
+		t.Error("ANSI16(3).IsZeroColor() = true, want false")
+	}
+}
+
+func TestANSI256_StoresCode(t *testing.T) {
+	c := ANSI256(200)
+	if c.code != 200 {
+		t.Errorf("ANSI256(200).code = %d, want 200", c.code)
+	}
+	if c.mode != colorANSI256 {
+		t.Errorf("ANSI256 mode = %v, want colorANSI256", c.mode)
+	}
+	if c.IsZeroColor() {
+		t.Error("ANSI256(200).IsZeroColor() = true, want false")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// IsZeroColor
+// ---------------------------------------------------------------------------
+
+func TestColor_IsZeroColor(t *testing.T) {
+	cases := []struct {
+		name   string
+		c      Color
+		isZero bool
+	}{
+		{"zero value", Color{}, true},
+		{"RGB black", RGB(0, 0, 0), false},
+		{"RGB white", RGB(255, 255, 255), false},
+		{"RGB arbitrary", RGB(1, 2, 3), false},
+		{"ANSI16(0)", ANSI16(0), false},
+		{"ANSI16(15)", ANSI16(15), false},
+		{"ANSI256(0)", ANSI256(0), false},
+		{"ANSI256(255)", ANSI256(255), false},
+		{"HexToRGB valid", HexToRGB("#ff0000"), false},
+		{"HexToRGB invalid", HexToRGB("bad"), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.c.IsZeroColor()
+			if got != tc.isZero {
+				t.Errorf("IsZeroColor() = %v, want %v", got, tc.isZero)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Color.String
+// ---------------------------------------------------------------------------
+
+func TestColor_String(t *testing.T) {
+	cases := []struct {
+		name string
+		c    Color
+		want string
+	}{
+		{"zero color", Color{}, "Color(None)"},
+		{"RGB", RGB(255, 0, 0), "RGB(255, 0, 0)"},
+		{"RGB zeros", RGB(0, 0, 0), "RGB(0, 0, 0)"},
+		{"ANSI16", ANSI16(1), "ANSI16(1)"},
+		{"ANSI16 bright", ANSI16(9), "ANSI16(9)"},
+		{"ANSI256", ANSI256(200), "ANSI256(200)"},
+		{"ANSI256 zero", ANSI256(0), "ANSI256(0)"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.c.String()
+			if got != tc.want {
+				t.Errorf("Color.String() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ANSI16 SGR codes — normal (30–37) vs bright (90–97) branches
+// ---------------------------------------------------------------------------
+
+func TestANSI16_FgParams_NormalRange(t *testing.T) {
+	// codes 0–7 → SGR 30–37
+	for code := uint8(0); code < 8; code++ {
+		c := ANSI16(code)
+		params := c.fgParams()
+		if len(params) != 1 {
+			t.Errorf("ANSI16(%d) fgParams len = %d, want 1", code, len(params))
+			continue
+		}
+		want := strings.Join([]string{fmt.Sprintf("%d", 30+int(code))}, "")
+		_ = want
+		// Verify the numeric value: 30 + code
+		expected := 30 + int(code)
+		var got int
+		if _, err := fmt.Sscanf(params[0], "%d", &got); err != nil {
+			t.Errorf("ANSI16(%d) fgParams[0] parse error: %v", code, err)
+			continue
+		}
+		if got != expected {
+			t.Errorf("ANSI16(%d) fgParams[0] = %q, want %d", code, params[0], expected)
+		}
+	}
+}
+
+func TestANSI16_FgParams_BrightRange(t *testing.T) {
+	// codes 8–15 → SGR 90–97  (formula: 82 + code)
+	for code := uint8(8); code < 16; code++ {
+		c := ANSI16(code)
+		params := c.fgParams()
+		if len(params) != 1 {
+			t.Errorf("ANSI16(%d) fgParams len = %d, want 1", code, len(params))
+			continue
+		}
+		expected := 82 + int(code) // e.g. code=8 → 90
+		var got int
+		if _, err := fmt.Sscanf(params[0], "%d", &got); err != nil {
+			t.Errorf("ANSI16(%d) fgParams[0] parse error: %v", code, err)
+			continue
+		}
+		if got != expected {
+			t.Errorf("ANSI16(%d) fgParams[0] = %q, want %d", code, params[0], expected)
+		}
+	}
+}
+
+func TestANSI16_BgParams_NormalRange(t *testing.T) {
+	// codes 0–7 → SGR 40–47
+	for code := uint8(0); code < 8; code++ {
+		c := ANSI16(code)
+		params := c.bgParams()
+		if len(params) != 1 {
+			t.Errorf("ANSI16(%d) bgParams len = %d, want 1", code, len(params))
+			continue
+		}
+		expected := 40 + int(code)
+		var got int
+		if _, err := fmt.Sscanf(params[0], "%d", &got); err != nil {
+			t.Errorf("ANSI16(%d) bgParams[0] parse error: %v", code, err)
+			continue
+		}
+		if got != expected {
+			t.Errorf("ANSI16(%d) bgParams[0] = %q, want %d", code, params[0], expected)
+		}
+	}
+}
+
+func TestANSI16_BgParams_BrightRange(t *testing.T) {
+	// codes 8–15 → SGR 100–107  (formula: 92 + code)
+	for code := uint8(8); code < 16; code++ {
+		c := ANSI16(code)
+		params := c.bgParams()
+		if len(params) != 1 {
+			t.Errorf("ANSI16(%d) bgParams len = %d, want 1", code, len(params))
+			continue
+		}
+		expected := 92 + int(code)
+		var got int
+		if _, err := fmt.Sscanf(params[0], "%d", &got); err != nil {
+			t.Errorf("ANSI16(%d) bgParams[0] parse error: %v", code, err)
+			continue
+		}
+		if got != expected {
+			t.Errorf("ANSI16(%d) bgParams[0] = %q, want %d", code, params[0], expected)
+		}
+	}
+}
+
+func TestANSI16_Render_BrightFg(t *testing.T) {
+	// End-to-end: bright ANSI16 fg produces a sequence in the 90–97 range.
+	old := globalColorMode.Load()
+	t.Cleanup(func() { globalColorMode.Store(old) })
+	SetGlobalColorMode(colorModeAlways)
+
+	got := New().WithForeground(ANSI16(9)).Render("hi") // code 9 → SGR 91
+	if !strings.Contains(got, "91") {
+		t.Errorf("ANSI16(9) bright fg Render = %q, want SGR code 91", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ContrastedColor
+// ---------------------------------------------------------------------------
+
+func TestContrastedColor(t *testing.T) {
+	white := RGB(255, 255, 255)
+	black := RGB(0, 0, 0)
+
+	cases := []struct {
+		name string
+		bg   Color
+		want Color
+	}{
+		{
+			name: "dark background returns white",
+			bg:   RGB(0, 0, 0),
+			want: white,
+		},
+		{
+			name: "very dark navy returns white",
+			bg:   HexToRGB("#1a1a2e"),
+			want: white,
+		},
+		{
+			name: "light background returns black",
+			bg:   RGB(255, 255, 255),
+			want: black,
+		},
+		{
+			name: "light gray returns black",
+			bg:   HexToRGB("#f0f0f0"),
+			want: black,
+		},
+		{
+			name: "non-RGB bg returns white (fallback)",
+			bg:   ANSI16(0),
+			want: white,
+		},
+		{
+			name: "zero color bg returns white (fallback)",
+			bg:   Color{},
+			want: white,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ContrastedColor(tc.bg)
+			if got != tc.want {
+				t.Errorf("ContrastedColor(%v) = %v, want %v", tc.bg, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestContrastedColor_Symmetry_With_ContrastedColorWith(t *testing.T) {
+	// ContrastedColor(bg) should behave identically to
+	// ContrastedColorWith(bg, <any failing fg>, 4.5).
+	bgs := []Color{
+		RGB(0, 0, 0),
+		RGB(255, 255, 255),
+		HexToRGB("#1a1a2e"),
+		HexToRGB("#f0f0f0"),
+	}
+	for _, bg := range bgs {
+		// Pass a fg that will never pass WCAG AA so the fallback always fires.
+		withFallback := ContrastedColorWith(bg, bg, 4.5) // same color → ratio 1.0 → fallback
+		direct := ContrastedColor(bg)
+		if withFallback != direct {
+			t.Errorf("bg=%v: ContrastedColor=%v, ContrastedColorWith(fallback)=%v — mismatch",
+				bg, direct, withFallback)
+		}
+	}
+}
 
 func TestHexToRGB(t *testing.T) {
 	tests := []struct {

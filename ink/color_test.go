@@ -1,9 +1,7 @@
 package ink
 
 import (
-	"fmt"
 	"math"
-	"strings"
 	"testing"
 )
 

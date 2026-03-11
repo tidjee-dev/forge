@@ -73,6 +73,34 @@ func TestColorMode_AutoWithTERMDumb(t *testing.T) {
 	}
 }
 
+func TestColorMode_AutoWithCOLORTERM_Truecolor(t *testing.T) {
+	resetColorMode(t)
+	os.Unsetenv("NO_COLOR")
+	os.Unsetenv("TERM")
+	t.Setenv("COLORTERM", "truecolor")
+	envOnce = sync.Once{}
+	envDisabled = false
+	envForced = false
+	SetGlobalColorMode(colorModeAuto)
+	if !ColorModeEnabled() {
+		t.Error("ColorModeEnabled() = false with COLORTERM=truecolor, want true")
+	}
+}
+
+func TestColorMode_AutoWithCOLORTERM_24bit(t *testing.T) {
+	resetColorMode(t)
+	os.Unsetenv("NO_COLOR")
+	os.Unsetenv("TERM")
+	t.Setenv("COLORTERM", "24bit")
+	envOnce = sync.Once{}
+	envDisabled = false
+	envForced = false
+	SetGlobalColorMode(colorModeAuto)
+	if !ColorModeEnabled() {
+		t.Error("ColorModeEnabled() = false with COLORTERM=24bit, want true")
+	}
+}
+
 func TestColorMode_PublicAliases(t *testing.T) {
 	if AutoColorMode != colorModeAuto {
 		t.Errorf("AutoColorMode = %v, want %v", AutoColorMode, colorModeAuto)

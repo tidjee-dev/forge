@@ -332,6 +332,139 @@ func TestStyle_String_WithAttributes(t *testing.T) {
 	}
 }
 
+func TestStyle_String_AllAttributes(t *testing.T) {
+	cases := []struct {
+		name  string
+		style Style
+		want  string
+	}{
+		{"dim", New().WithDim(true), "dim"},
+		{"italic", New().WithItalic(true), "italic"},
+		{"underline", New().WithUnderline(true), "underline"},
+		{"strikethrough", New().WithStrikethrough(true), "strikethrough"},
+		{"inverse", New().WithInverse(true), "inverse"},
+		{"background", New().WithBackground(Blue), "bg="},
+		{"layout set", New().WithLayout(NewLayout().WithUniformPadding(1)), "layout=<set>"},
+		{"border set", New().WithBorder(BorderNormal()), "border=<set>"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.style.String()
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("Style.String() missing %q, got %q", tc.want, got)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Render — layout: MaxWidth truncation and JustifyContent alignment
+// ---------------------------------------------------------------------------
+
+func TestStyle_Render_Layout_MaxWidth_Truncates(t *testing.T) {
+	forceColorMode(t, colorModeNever)
+
+	s := New().WithLayout(NewLayout().WithMaxWidth(5))
+	got := s.Render("Hello, world!")
+
+	// Result must not exceed 5 visible columns (4 chars + ellipsis).
+	stripped := Strip(got)
+	if runeWidth(stripped) > 5 {
+		t.Errorf("MaxWidth(5) Render visible width = %d > 5, got %q", runeWidth(stripped), stripped)
+	}
+	if !strings.Contains(stripped, "…") {
+		t.Errorf("MaxWidth truncation missing ellipsis, got %q", stripped)
+	}
+}
+
+func TestStyle_Render_Layout_MaxWidth_NoTruncation_WhenShort(t *testing.T) {
+	forceColorMode(t, colorModeNever)
+
+	s := New().WithLayout(NewLayout().WithMaxWidth(20))
+	got := s.Render("Hi")
+
+	if Strip(got) != "Hi" {
+		t.Errorf("MaxWidth(20) on short text = %q, want %q", Strip(got), "Hi")
+	}
+	if strings.Contains(got, "…") {
+		t.Errorf("MaxWidth(20) on short text produced unexpected ellipsis")
+	}
+}
+
+func TestStyle_Render_Layout_JustifyEnd(t *testing.T) {
+	forceColorMode(t, colorModeNever)
+
+	s := New().WithLayout(
+		NewLayout().WithMinWidth(10).WithJustifyContent(JustifyEnd),
+	)
+	got := s.Render("Hi")
+
+	// "Hi" is 2 columns; minWidth=10 → 8 spaces prepended.
+	if !strings.HasPrefix(got, "        ") {
+		t.Errorf("JustifyEnd(minWidth=10) Render = %q, expected leading spaces", got)
+	}
+	if !strings.Contains(got, "Hi") {
+		t.Errorf("JustifyEnd Render lost content, got %q", got)
+	}
+}
+
+func TestStyle_Render_Layout_JustifyCenter(t *testing.T) {
+	forceColorMode(t, colorModeNever)
+
+	s := New().WithLayout(
+		NewLayout().WithMinWidth(10).WithJustifyContent(JustifyCenter),
+	)
+	got := s.Render("Hi")
+
+	// "Hi" is 2 columns; pad=8 → 4 spaces on each side.
+	if !strings.HasPrefix(got, "    ") {
+		t.Errorf("JustifyCenter(minWidth=10) Render = %q, expected leading spaces", got)
+	}
+	if !strings.HasSuffix(got, "    ") {
+		t.Errorf("JustifyCenter(minWidth=10) Render = %q, expected trailing spaces", got)
+	}
+	if !strings.Contains(got, "Hi") {
+		t.Errorf("JustifyCenter Render lost content, got %q", got)
+	}
+}
+
+func TestStyle_Render_Layout_JustifyStart(t *testing.T) {
+	forceColorMode(t, colorModeNever)
+
+	s := New().WithLayout(
+		NewLayout().WithMinWidth(10).WithJustifyContent(JustifyStart),
+	)
+	got := s.Render("Hi")
+
+	// "Hi" is 2 columns; pad=8 → 8 spaces appended.
+	if !strings.HasPrefix(got, "Hi") {
+		t.Errorf("JustifyStart(minWidth=10) Render = %q, expected content first", got)
+	}
+	if !strings.HasSuffix(got, "        ") {
+		t.Errorf("JustifyStart(minWidth=10) Render = %q, expected trailing spaces", got)
+	}
+}
+
+func TestStyle_Render_Layout_Padding(t *testing.T) {
+	forceColorMode(t, colorModeNever)
+
+	s := New().WithLayout(NewLayout().WithUniformPadding(1))
+	got := s.Render("X")
+
+	lines := strings.Split(got, "\n")
+	// uniform padding 1 → 1 blank line top, content line, 1 blank line bottom = 3 lines
+	if len(lines) != 3 {
+		t.Errorf("UniformPadding(1) Render line count = %d, want 3\noutput: %q", len(lines), got)
+	}
+	// Content line must have leading and trailing space.
+	if !strings.HasPrefix(lines[1], " ") {
+		t.Errorf("UniformPadding(1) content line missing leading space: %q", lines[1])
+	}
+	if !strings.HasSuffix(lines[1], " ") {
+		t.Errorf("UniformPadding(1) content line missing trailing space: %q", lines[1])
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Unset
 // ---------------------------------------------------------------------------

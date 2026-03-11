@@ -18,7 +18,7 @@ const (
 // ANSI 256-color palette entry, an ANSI 16-color code, or the zero value
 // (meaning "no color / inherit from terminal default").
 //
-// Construct a Color with [RGB], [ANSI16], [ANSI256], or [HexToRGB].
+// Construct a Color with [RGB], [ANSI16], [ANSI256], or [Hex].
 // The zero value of Color is valid and means "no color".
 type Color struct {
 	r, g, b uint8
@@ -32,14 +32,14 @@ func RGB(r, g, b uint8) Color {
 	return Color{r: r, g: g, b: b, mode: colorRGB}
 }
 
-// HexToRGB parses a CSS-style hex color string and returns the corresponding
+// Hex parses a CSS-style hex color string and returns the corresponding
 // RGB Color. Both the long form ("#rrggbb") and the short form ("#rgb") are
 // accepted; the hash prefix is required. Letter case is ignored.
 //
 // If the input is empty, missing the "#" prefix, the wrong length, or contains
-// non-hex characters, a zero Color (no color) is returned — HexToRGB never
+// non-hex characters, a zero Color (no color) is returned — Hex never
 // panics.
-func HexToRGB(hex string) Color {
+func Hex(hex string) Color {
 	var r, g, b uint8
 
 	if len(hex) == 7 && hex[0] == '#' {

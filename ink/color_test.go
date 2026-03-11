@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestHexToRGB(t *testing.T) {
+func TestHex(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
@@ -101,17 +101,17 @@ func TestHexToRGB(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := HexToRGB(tt.input)
+			got := Hex(tt.input)
 
 			if tt.isZero {
 				if !got.IsZeroColor() {
-					t.Errorf("HexToRGB(%q) = %+v, want zero Color", tt.input, got)
+					t.Errorf("Hex(%q) = %+v, want zero Color", tt.input, got)
 				}
 				return
 			}
 
 			if got != tt.want {
-				t.Errorf("HexToRGB(%q) = %+v, want %+v", tt.input, got, tt.want)
+				t.Errorf("Hex(%q) = %+v, want %+v", tt.input, got, tt.want)
 			}
 		})
 	}
@@ -154,15 +154,15 @@ func TestContrastRatio(t *testing.T) {
 		},
 		{
 			name:    "dark bg vs white fg passes WCAG AA (>= 4.5)",
-			c1:      HexToRGB("#1a1a2e"),
+			c1:      Hex("#1a1a2e"),
 			c2:      RGB(255, 255, 255),
 			wantMin: 4.5,
 			wantMax: 21.1,
 		},
 		{
 			name:    "dark bg vs dark fg fails WCAG AA (< 4.5)",
-			c1:      HexToRGB("#1a1a2e"),
-			c2:      HexToRGB("#222244"),
+			c1:      Hex("#1a1a2e"),
+			c2:      Hex("#222244"),
 			wantMin: 1.0,
 			wantMax: 4.4,
 		},
@@ -180,8 +180,8 @@ func TestContrastRatio(t *testing.T) {
 }
 
 func TestContrastedColorWith(t *testing.T) {
-	darkBg := HexToRGB("#1a1a2e")
-	lightBg := HexToRGB("#f0f0f0")
+	darkBg := Hex("#1a1a2e")
+	lightBg := Hex("#f0f0f0")
 	white := RGB(255, 255, 255)
 	black := RGB(0, 0, 0)
 
@@ -230,9 +230,9 @@ func TestContrastedColorWith(t *testing.T) {
 		{
 			name:     "low minRatio (3.0) accepts fg that 4.5 would reject",
 			bg:       lightBg,
-			fg:       HexToRGB("#767676"), // ~4.48 contrast on white, fails 4.5 but passes 3.0
+			fg:       Hex("#767676"), // ~4.48 contrast on white, fails 4.5 but passes 3.0
 			minRatio: 3.0,
-			want:     HexToRGB("#767676"),
+			want:     Hex("#767676"),
 		},
 		{
 			name:     "non-RGB fg with passing contrast",
@@ -463,7 +463,7 @@ func TestContrastRatioSymmetry(t *testing.T) {
 	pairs := [][2]Color{
 		{Black, White},
 		{Red, Blue},
-		{HexToRGB("#3a86ff"), HexToRGB("#ffbe0b")},
+		{Hex("#3a86ff"), Hex("#ffbe0b")},
 	}
 	for _, p := range pairs {
 		r1 := ContrastRatio(p[0], p[1])
